@@ -785,6 +785,100 @@ let routes = [], activeKind = 'safe', mapA = -1, mapB = -1, foundZone = -1, vb =
 let gankKills = [];        // отфильтрованные свежие ганг-убийства
 let seenKillIds = new Set();
 let killsLoading = false, killsLastAt = 0, killsErr = '', killsTimer = null;
+const killPriceCache = new Map(); // "${srv}|${id}" -> { p, ts }
+const CARGO_MIN_SILVER = 3000000;
+const KB_SERVER_PARAM = { europe: 'live_ams', west: 'live_us', east: 'live_sgp' };
+
+function fmtSilverShort(n) {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, '')}М`;
+  if (n >= 1000) return `${Math.round(n / 1000)}к`;
+  return fmt(n);
+}
+
+function isUntradableLootId(id) {
+  return /^(QUESTITEM_|T1_TRASH)|NONTRADABLE|_UNLOCK|VANITY|AVATAR/i.test(id);
+}
+
+function medianPrice(vals) {
+  const pos = vals.filter(v => v > 0).sort((a, b) => a - b);
+  if (!pos.length) return 0;
+  return pos[Math.floor((pos.length - 1) / 2)];
+}
+
+function cachedLootPrice(srv, id) {
+  const c = killPriceCache.get(`${srv}|${id}`);
+  if (c && (Date.now() - c.ts) < 20 * 60 * 1000) return c.p;
+  const r = raw.get(`${id}|1`) || resP.get(`${id}|1`);
+  if (r && r.c) {
+    const sells = [], buys = [];
+    for (const p of Object.values(r.c)) {
+      if (p.sell_price_min > 0) sells.push(p.sell_price_min);
+      if (p.buy_price_max > 0) buys.push(p.buy_price_max);
+    }
+    const p = medianPrice(sells) || medianPrice(buys);
+    if (p > 0) {
+      killPriceCache.set(`${srv}|${id}`, { p, ts: Date.now() });
+      return p;
+    }
+  }
+  return null;
+}
+
+async function priceVictimInventories(kills, srv) {
+  const need = [];
+  const needSet = new Set();
+  for (const k of kills) {
+    for (const it of k.invItems) {
+      if (isUntradableLootId(it.id)) continue;
+      if (cachedLootPrice(srv, it.id) === null && !needSet.has(it.id)) {
+        needSet.add(it.id);
+        need.push(it.id);
+      }
+    }
+  }
+  if (need.length && !busy) {
+    const locs = 'Caerleon,Bridgewatch,Fort%20Sterling,Lymhurst,Martlock,Thetford';
+    const host = `https://${srv}.albion-online-data.com/api/v2/stats/prices/`;
+    for (const chunk of chunkIds(need.slice(0, 140), 3200)) {
+      try {
+        const ctrl = new AbortController();
+        const tm = setTimeout(() => ctrl.abort(), 5000);
+        const r = await fetch(`${host}${chunk.join(',')}.json?locations=${locs}&qualities=1`, { signal: ctrl.signal });
+        clearTimeout(tm);
+        if (!r.ok) break;
+        const rowsData = await r.json();
+        if (!Array.isArray(rowsData)) break;
+        const grouped = new Map();
+        for (const row of rowsData) {
+          const pid = safeId(row.item_id);
+          if (!pid) continue;
+          let g = grouped.get(pid);
+          if (!g) grouped.set(pid, g = { sells: [], buys: [] });
+          if (row.sell_price_min > 0) g.sells.push(row.sell_price_min);
+          if (row.buy_price_max > 0) g.buys.push(row.buy_price_max);
+        }
+        const now = Date.now();
+        for (const id of chunk) {
+          const g = grouped.get(id);
+          const p = g ? (medianPrice(g.sells) || medianPrice(g.buys)) : 0;
+          killPriceCache.set(`${srv}|${id}`, { p, ts: now });
+        }
+      } catch (e) { break; }
+    }
+  }
+  for (const k of kills) {
+    let total = 0;
+    for (const it of k.invItems) {
+      if (isUntradableLootId(it.id)) continue;
+      const p = cachedLootPrice(srv, it.id) || 0;
+      total += p * it.cnt;
+    }
+    k.invValue = Math.round(total);
+    // Перевозчиком считаем только если в инвентаре оценочно >= 3 000 000 серебра
+    k.isTransporter = k.invValue >= CARGO_MIN_SILVER;
+    if (k.isTransporter) k.royalPriority += 2;
+  }
+}
 
 // Распознавание предметов сета гангера по ID предмета
 function detectGankerGear(eq) {
@@ -812,7 +906,7 @@ function detectGankerGear(eq) {
   return tags;
 }
 
-function analyzeKillEvent(ev) {
+function analyzeKillEvent(ev, kbSrv) {
   if (!ev || ev.KillArea !== 'OPEN_WORLD' || !ev.Killer || !ev.Victim) return null;
   const group = Math.max(ev.numberOfParticipants || 1, ev.groupMemberCount || 1);
   const kEq = ev.Killer.Equipment || {}, vEq = ev.Victim.Equipment || {};
@@ -822,12 +916,20 @@ function analyzeKillEvent(ev) {
   }
   const vMount = (vEq.Mount && vEq.Mount.Type) || '';
   const vBag = (vEq.Bag && vEq.Bag.Type) || '';
-  const invDrops = Array.isArray(ev.Victim.Inventory) ? ev.Victim.Inventory.filter(Boolean).length : 0;
-  const isCargoMount = /MOUNT_OX|MOUNT_BEAR|MOUNT_BOAR|MOUNT_MAMMOTH|MOUNT_GIANTSTAG|MOUNT_SWAMPDRAGON|MOUNT_DIREBOAR/.test(vMount);
-  const isTransporter = isCargoMount || (invDrops >= 5 && !!vMount);
+  const invItems = [];
+  let invDrops = 0;
+  if (Array.isArray(ev.Victim.Inventory)) {
+    for (const slot of ev.Victim.Inventory) {
+      if (!slot) continue;
+      invDrops++;
+      const id = safeId(slot.Type);
+      const cnt = Math.max(1, parseInt(slot.Count, 10) || 1);
+      if (id) invItems.push({ id, cnt });
+    }
+  }
 
-  // Считаем убийство гангом, если это пачка (2+ игроков) ИЛИ сет гангера ИЛИ убит перевозчик
-  if (group < 2 && !gearTags.size && !isTransporter) return null;
+  // Пропускаем дальше события с пачкой (2+), сетом гангера или инвентарём (для проверки >= 3M)
+  if (group < 2 && !gearTags.size && !invItems.length) return null;
 
   const gearIcons = ['MainHand', 'Armor', 'Head', 'Shoes']
     .map(s => safeId(kEq[s] && kEq[s].Type))
@@ -843,14 +945,14 @@ function analyzeKillEvent(ev) {
   else if (/FW_THETFORD/.test(cape)) { region = 'Королевский · Тетфорд'; royalPriority = 2; }
   else if (/FW_MARTLOCK/.test(cape)) { region = 'Королевский · Мартлок'; royalPriority = 2; }
   else if (/SMUGGLER/.test(cape)) { region = 'Запределье (Контрабандист)'; royalPriority = 0; }
-  if (isTransporter) royalPriority += 2;
 
   return {
     id: Math.max(0, parseInt(ev.EventId, 10) || 0),
+    kbSrv: KB_SERVER_PARAM[kbSrv] ? KB_SERVER_PARAM[kbSrv] : (['live_ams','live_us','live_sgp'].includes(kbSrv) ? kbSrv : 'live_ams'),
     ts: Date.parse(ev.TimeStamp) || Date.now(),
     group: Math.max(1, parseInt(group, 10) || 1),
     tags: [...gearTags].slice(0, 3),
-    isTransporter,
+    isTransporter: false,
     royalPriority,
     region,
     fame: Math.max(0, Number(ev.TotalVictimKillFame) || 0),
@@ -863,6 +965,8 @@ function analyzeKillEvent(ev) {
     vIp: Math.max(0, Math.round(Number(ev.Victim.AverageItemPower) || 0)),
     vMount: safeId(vMount),
     vBag: safeId(vBag),
+    invItems,
+    invValue: 0,
     invDrops: Math.max(0, parseInt(invDrops, 10) || 0)
   };
 }
@@ -889,7 +993,7 @@ function showGankToast(k, totalNew) {
     </div>
     <div class="gt-actions">
       <button type="button" class="mini gt-open">Открыть сводку</button>
-      <a class="mini" href="https://albiononline.com/killboard/kill/${k.id}" target="_blank" rel="noopener">Killboard ↗</a>
+      <a class="mini" href="https://albiononline.com/killboard/kill/${k.id}?server=${encodeURIComponent(k.kbSrv)}" target="_blank" rel="noopener">Killboard ↗</a>
     </div>`;
   box.hidden = false;
   box.querySelector('.gt-close').onclick = () => { box.hidden = true; };
@@ -954,19 +1058,23 @@ async function checkGankKills(isAuto) {
       }
     } catch (e) {}
   }
-  killsLoading = false;
-  killsLastAt = Date.now();
   if (!data) {
-    if (location.protocol === 'file:') {
-      killsErr = 'local-file';
-    } else {
-      killsErr = 'cors-blocked';
-    }
+    killsLoading = false;
+    killsLastAt = Date.now();
+    killsErr = location.protocol === 'file:' ? 'local-file' : 'cors-blocked';
     drawRoutes();
     return;
   }
 
-  const parsed = data.map(analyzeKillEvent).filter(Boolean);
+  const kbSrv = KB_SERVER_PARAM[srv] || 'live_ams';
+  const candidates = data.map(ev => analyzeKillEvent(ev, kbSrv)).filter(Boolean);
+  try {
+    await priceVictimInventories(candidates, srv);
+  } finally {
+    killsLoading = false;
+    killsLastAt = Date.now();
+  }
+  const parsed = candidates.filter(k => k.group >= 2 || k.tags.length > 0 || k.isTransporter);
   parsed.sort((a, b) => (b.royalPriority - a.royalPriority) || (b.ts - a.ts));
   const fresh = parsed.filter(k => !seenKillIds.has(k.id));
   const hadPrevious = seenKillIds.size > 0;
@@ -1184,12 +1292,12 @@ function gankFeedHtml() {
           <div class="kf-side">
             <small>Жертва (${k.vIp} IP)</small>
             <b>${esc(k.victim)}</b>
-            <div class="kf-gear">${vIcons}<span class="kf-drops">${k.invDrops ? `лут: ${k.invDrops} слотов` : fmt(k.fame) + ' славы'}</span></div>
+            <div class="kf-gear">${vIcons}<span class="kf-drops">${k.invValue > 0 ? `лут ~${fmtSilverShort(k.invValue)} (${k.invDrops} сл.)` : k.invDrops ? `лут: ${k.invDrops} сл.` : fmt(k.fame) + ' славы'}</span></div>
           </div>
         </div>
         <div class="kf-foot">
           <span>📍 ${esc(k.region)}</span>
-          <a href="https://albiononline.com/killboard/kill/${k.id}" target="_blank" rel="noopener">Сводка ↗</a>
+          <a href="https://albiononline.com/killboard/kill/${k.id}?server=${encodeURIComponent(k.kbSrv)}" target="_blank" rel="noopener">Сводка ↗</a>
         </div>
       </div>`;
     }).join('') + `</div>`;
