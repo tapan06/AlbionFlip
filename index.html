@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Albion Flip — by Memory Shards</title>
+<meta name="description" content="Albion Flip by Memory Shards: сканер прибыли для рынка Albion Online — Чёрный рынок, перевозка, зачарование, крафт и радар гангов.">
+<meta name="theme-color" content="#0c0f20">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Albion Flip — Торговый терминал и радар маршрутов Albion Online">
+<meta property="og:description" content="Сканер Чёрного рынка и межгородских сделок, калькулятор крафта и зачарования, умные маршруты и живая сводка ганг-убийств.">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="logo" id="logo" title="На главную">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#7ff0ff"/>
+            <stop offset="0.5" stop-color="#5fd8ff"/>
+            <stop offset="1" stop-color="#9b7bff"/>
+          </linearGradient>
+        </defs>
+        <polygon points="20,2 28,16 23,38 15,38 11,17" fill="url(#lg)"/>
+        <polygon points="7,14 13,20 13,36 6,30 3,20" fill="#5fd8ff" opacity=".78"/>
+        <polygon points="33,13 37,21 34,31 27,36 27,20" fill="#9b7bff" opacity=".82"/>
+        <polygon points="20,2 23,16 20,38 17,16" fill="#fff" opacity=".4"/>
+      </svg>
+    </div>
+    <span><b>ALBION FLIP</b><small>by Memory Shards</small></span>
+  </div>
+  <nav class="navtabs" id="tabs">
+    <button type="button" data-t="home">
+      <svg class="tab-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 0 1-1 1h-4v-5H8v5H4a1 1 0 0 1-1-1V9.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Главная</span>
+    </button>
+    <button type="button" data-t="deals">
+      <svg class="tab-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 14l4.5-4.5 3.5 3.5L17 7M17 7h-4.5M17 7v4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Сделки</span>
+    </button>
+    <button type="button" data-t="ench">
+      <svg class="tab-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M10 2l2.4 5.2L18 9.5l-5.6 2.3L10 17l-2.4-5.2L2 9.5l5.6-2.3L10 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Зачарование</span>
+    </button>
+    <button type="button" data-t="craft">
+      <svg class="tab-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M14.5 3.5l2 2-9 9-3.5 1.5 1.5-3.5 9-9zM12 6l2 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Крафт</span>
+    </button>
+    <button type="button" data-t="map">
+      <svg class="tab-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2.5 5.5l5-2 5 2 5-2v11l-5 2-5-2-5 2v-11zM7.5 3.5v11M12.5 5.5v11" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Карта</span>
+    </button>
+    <button type="button" data-t="cart">
+      <svg class="tab-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 4h2l1.6 8.5a1 1 0 0 0 1 .8h7.8a1 1 0 0 0 1-.8L18 6H5.5M8 16.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm8 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Корзина</span> <span class="cart-badge" id="cartN">0</span>
+    </button>
+  </nav>
+  <div class="nav-right">
+    <button type="button" class="btn ghost support-btn" id="supportBtn">
+      <span class="heart">♥</span> Поддержать проект
+    </button>
+  </div>
+</header>
+
+<!-- ГЛАВНАЯ -->
+<section id="homeView">
+  <div class="bg-grid" aria-hidden="true"></div>
+  <i class="shard" style="width:280px;height:320px;left:-60px;top:40px;transform:rotate(-18deg)"></i>
+  <i class="shard" style="width:220px;height:260px;right:-40px;top:20px;transform:rotate(24deg)"></i>
+  <i class="shard" style="width:130px;height:160px;left:18%;top:430px;transform:rotate(40deg);opacity:.18"></i>
+  <i class="shard" style="width:160px;height:190px;right:14%;top:400px;transform:rotate(-30deg);opacity:.2"></i>
+  <div class="hero" id="hero">
+    <div class="herotext">
+      <div class="hero-pill"><span>✦</span> ТОРГОВЫЙ ТЕРМИНАЛ ALBION ONLINE</div>
+      <h1>ALBION FLIP</h1>
+      <p>Сканер прибыли для рынка Albion Online. Находит выгодные сделки на Чёрном рынке и между городами, считает зачарование и крафт, собирает груз под твоего маунта.</p>
+      <div class="hero-pills">
+        <span>Чёрный рынок и 7 городов</span>
+        <span>Спрос и объёмы за 7 дней</span>
+        <span>Калькулятор веса и экипировки</span>
+        <span>Сводка гангов и маршруты</span>
+      </div>
+      <div class="cta">
+        <button type="button" class="btn btn-lg" data-go="deals">Открыть сканер →</button>
+        <button type="button" class="btn ghost btn-lg" data-go="craft">Калькулятор крафта</button>
+      </div>
+    </div>
+  </div>
+  <div class="features">
+    <div class="feat" data-go="deals">
+      <div class="feat-icon"><img src="https://render.albiononline.com/v1/item/T8_BAG@3.png?size=96" alt=""></div>
+      <b>Сделки</b>
+      <span>Чёрный рынок, перевозка между городами и флип в одном городе — с налогом, сбором и спросом за день.</span>
+      <em class="feat-go">Перейти к сканеру →</em>
+    </div>
+    <div class="feat" data-go="ench">
+      <div class="feat-icon"><img src="https://render.albiononline.com/v1/item/T6_RUNE.png?size=96" alt=""></div>
+      <b>Зачарование</b>
+      <span>Купить предмет, поднять зачарование рунами, душами или реликвиями и продать дороже.</span>
+      <em class="feat-go">Рассчитать апгрейд →</em>
+    </div>
+    <div class="feat" data-go="craft">
+      <div class="feat-icon"><img src="https://render.albiononline.com/v1/item/T7_MEAL_PIE.png?size=96" alt=""></div>
+      <b>Крафт</b>
+      <span>Себестоимость снаряжения, еды и зелий по рецептам игры с возвратом ресурсов.</span>
+      <em class="feat-go">Открыть калькулятор →</em>
+    </div>
+    <div class="feat" data-go="map">
+      <div class="feat-icon"><img src="https://render.albiononline.com/v1/item/T8_MOUNT_HORSE.png?size=96" alt=""></div>
+      <b>Карта и сводка гангов</b>
+      <span>Три маршрута с обходом засад и автоматическая проверка свежих убийств в сетах гангеров и пачками.</span>
+      <em class="feat-go">Проложить маршрут →</em>
+    </div>
+    <div class="feat" data-go="cart">
+      <div class="feat-icon"><img src="https://render.albiononline.com/v1/item/T8_MOUNT_OX.png?size=96" alt=""></div>
+      <b>Рюкзак и корзина</b>
+      <span>Собери груз под маунта и сумку, проверь вес и бюджет, перенеси набор снаряжения в игру.</span>
+      <em class="feat-go">Собрать закупку →</em>
+    </div>
+  </div>
+  <div class="foot">
+    Made by <b>Memory Shards</b> · <a id="authorLink" target="_blank" rel="noopener">YouTube</a><br>
+    Цены: Albion Online Data Project. Сайт не связан с Sandbox Interactive и не выполняет никаких действий в игре.
+  </div>
+</section>
+
+<!-- КАРТА -->
+<section id="mapView" hidden>
+  <div class="top map-toolbar">
+    <div class="map-search-wrap">
+      <label>🔍 Поиск
+        <input type="text" id="mapSearch" placeholder="найти зону на карте…" autocomplete="off">
+      </label>
+      <div id="mapSearchDrop" class="map-search-drop" hidden></div>
+    </div>
+    <div class="toolbar-sep"></div>
+    <label>Откуда <input type="text" id="mapFrom" list="zoneList" placeholder="город или зона" value="Bridgewatch"></label>
+    <button type="button" class="mini icon-btn" id="mapSwap" title="Поменять местами">⇄</button>
+    <label>Куда <input type="text" id="mapTo" list="zoneList" placeholder="город или зона" value="Fort Sterling"></label>
+    <div class="toolbar-sep"></div>
+    <button type="button" class="mini" id="mapRoyal">Королевский континент</button>
+    <button type="button" class="mini" id="mapAll">Весь мир</button>
+    <button type="button" class="mini" id="checkKillsBtn" title="Проверить последние убийства гангеров через официальный Killboard">🔄 Проверить ганги</button>
+    <label title="Автопроверка свежих ганг-убийств в фоне (покажет предупреждение, если появится новое убийство)">
+      Авто
+      <select id="killsInt">
+        <option value="5">5 мин</option>
+        <option value="10">10 мин</option>
+        <option value="0">выкл</option>
+      </select>
+    </label>
+    <span id="mapStatus" class="dim"></span>
+    <datalist id="zoneList"></datalist>
+  </div>
+  <div class="mapwrap">
+    <div class="routes" id="routes"></div>
+    <div class="map-canvas">
+      <svg id="mapSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="map-ctrls">
+        <button type="button" class="mini" id="mapZoomIn" title="Приблизить">＋</button>
+        <button type="button" class="mini" id="mapZoomOut" title="Отдалить">－</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- РАБОЧАЯ ОБЛАСТЬ -->
+<div class="app" id="app" hidden>
+<aside>
+  <div class="presets-head" id="presetsHead">Быстрые пресеты</div>
+  <div class="presets" id="presetsBar">
+    <button type="button" data-p="bm">Чёрный рынок</button>
+    <button type="button" data-p="cities">Между городами</button>
+    <button type="button" data-p="same">В одном городе</button>
+  </div>
+
+  <details open id="secItems">
+    <summary><span class="num">1</span>Предметы</summary>
+    <div class="sec">
+      <div class="f"><b>Поиск по названию</b><input type="text" id="search" placeholder="например: сумка, палаш"></div>
+      <div class="f"><b>Тир</b><div class="checks" id="tiers"></div></div>
+      <div class="f"><b>Зачарование</b><div class="checks" id="enchs"></div></div>
+      <div class="f" id="qualField"><b>Качество</b><div class="checks" id="quals"></div></div>
+      <div class="f"><b>Категории</b><div class="checks" id="cats"></div></div>
+    </div>
+  </details>
+
+  <details open id="secRoute">
+    <summary><span class="num">2</span>Маршрут</summary>
+    <div class="sec">
+      <div class="f" id="buyCitiesField"><b>Где покупать</b><div class="checks" id="buyCities"></div></div>
+      <div class="f" id="buyModeField"><b>Как покупать</b><select id="buyMode">
+        <option value="both">Оба способа (сравнить)</option>
+        <option value="order">Заказ на покупку</option>
+        <option value="instant">Сразу (по цене продавца)</option></select></div>
+      <div class="f"><b>Где продавать</b><div class="checks" id="sellCities"></div></div>
+      <div class="f"><b>Как продавать (Чёрный рынок — всегда сразу)</b><select id="sellMode">
+        <option value="both">Оба способа (сравнить)</option>
+        <option value="order">Заказ на продажу</option>
+        <option value="instant">Сразу (в заказ покупателя)</option></select></div>
+      <label class="line" id="sameCityLine"><input type="checkbox" id="sameCity"> Только без перевозки (купил и продал в одном городе)</label>
+    </div>
+  </details>
+
+  <details open id="secCargo">
+    <summary><span class="num">3</span>Снаряжение и груз</summary>
+    <div class="sec">
+      <div class="doll">
+        <div class="dollhead"><b>Рюкзак</b><input type="text" id="loName" placeholder="название набора" title="Название набора снаряжения — так он будет называться в игре"></div>
+        <div class="slots" id="slots"></div>
+        <div class="dollrow"><span class="coin" title="Бюджет в серебре"></span><input type="number" id="silver" value="0" min="0" step="10000" title="Сколько серебра ты готов потратить. 0 = без ограничения."><small>серебра на закупку</small></div>
+        <div class="wbar" id="wbar"><i id="wfill"></i><span id="wtext">0%</span></div>
+      </div>
+      <div class="two">
+        <button type="button" class="mini" id="loCopy" title="Скопировать набор в буфер обмена — в игре: Наборы снаряжения → создать из буфера">Скопировать в игру</button>
+        <button type="button" class="mini" id="loPaste" title="Вставить набор, скопированный в игре">Вставить из игры</button>
+      </div>
+      <div id="slotPanel" hidden></div>
+      <div class="two">
+        <div class="f"><b>Уже занято, кг</b><input type="number" id="usedKg" value="0" min="0" step="5" title="Вес того, что уже лежит в инвентаре"></div>
+        <div class="f"><b>Свой лимит, кг</b><input type="number" id="customKg" value="0" min="0" step="50" title="Если в игре у тебя другая цифра — впиши её сюда, она заменит расчёт. 0 = считать автоматически."></div>
+      </div>
+      <div id="capBox"></div>
+    </div>
+  </details>
+
+  <details open id="secFilter">
+    <summary><span class="num">4</span>Фильтры сделок</summary>
+    <div class="sec">
+      <div class="two">
+        <div class="f"><b>Мин. прибыль, %</b><input type="number" id="minPct" value="50" step="5"></div>
+        <div class="f"><b>Макс. прибыль, %</b><input type="number" id="maxPct" value="1000" step="50" title="Отсекает мусорные цены с нереальной прибылью"></div>
+      </div>
+      <div class="f"><b>Макс. возраст цен, часов</b><input type="number" id="maxAge" value="12" step="1"></div>
+    </div>
+  </details>
+
+  <details id="secAuto">
+    <summary><span class="num">5</span>Авто-обновление</summary>
+    <div class="sec">
+      <label class="line"><input type="checkbox" id="autoOn"> Пересканировать автоматически</label>
+      <div class="two">
+        <div class="f"><b>Каждые, минут</b><input type="number" id="autoMin" value="10" min="3" step="1" title="Минимум 3 минуты — у базы цен есть лимит запросов"></div>
+        <div class="f"><b>Звук</b><button type="button" class="mini" id="testSound">Проверить звук</button></div>
+      </div>
+      <label class="line"><input type="checkbox" id="soundOn" checked> Сигнал, когда появилась новая сделка</label>
+      <div id="autoInfo"></div>
+    </div>
+  </details>
+
+  <details id="secMarket">
+    <summary><span class="num">6</span>Сервер и налоги</summary>
+    <div class="sec">
+      <div class="f"><b>Сервер</b><select id="server"></select></div>
+      <label class="line"><input type="checkbox" id="premium" checked> Премиум (налог 4% вместо 8%)</label>
+      <div class="two">
+        <div class="f"><b>Налог с продажи, %</b><input type="number" id="tax" value="4" step="0.5"></div>
+        <div class="f"><b>Сбор за заказ, %</b><input type="number" id="setup" value="2.5" step="0.5"></div>
+      </div>
+    </div>
+  </details>
+</aside>
+
+<main>
+  <div class="top action-bar" id="actionBar">
+    <button id="scanBtn" class="btn">Сканировать</button>
+    <button id="stopBtn" class="btn sec2" disabled>Стоп</button>
+    <span id="capChip"></span>
+    <button id="hidBtn" class="btn sec2" hidden title="Вернуть скрытые предметы в список"></button>
+    <span id="status">Выбери фильтры слева и нажми «Сканировать».</span>
+  </div>
+
+  <div class="view" id="dealsView">
+    <div class="tablewrap">
+      <table><thead><tr id="head"></tr></thead><tbody id="body"></tbody></table>
+      <div id="empty" class="empty">Пока пусто.</div>
+    </div>
+  </div>
+
+  <div class="view" id="enchView" hidden>
+    <div class="hint">Купить предмет, поднять зачарование на один уровень и продать. Считается по ценам из последнего сканирования: в фильтре «Зачарование» должны быть включены соседние уровни. Материал покупается в том же городе, что и предмет.</div>
+    <div class="tablewrap">
+      <table><thead><tr><th>Предмет</th><th>Уровень</th><th>Купить</th><th class="n">Цена</th><th>Материал</th><th class="n">На материал</th><th>Продать</th><th class="n">Цена</th><th class="n">Прибыль</th><th class="n">%</th><th class="n">Данные</th></tr></thead><tbody id="enchBody"></tbody></table>
+      <div id="enchEmpty" class="empty">Пока пусто — нажми «Сканировать».</div>
+    </div>
+  </div>
+
+  <div class="view" id="craftView" hidden>
+    <div class="top craft-toolbar action-bar">
+      <label>Город крафта <select id="craftCity"></select></label>
+      <label>Возврат ресурсов <select id="craftRet">
+        <option value="15.2">15,2% — без фокуса</option>
+        <option value="24.8">24,8% — бонус города</option>
+        <option value="43.5">43,5% — с фокусом</option>
+        <option value="47.9">47,9% — фокус + бонус города</option>
+        <option value="0">0% — не учитывать</option></select></label>
+      <label class="line"><input type="checkbox" id="craftGear" checked> Снаряжение</label>
+      <label class="line"><input type="checkbox" id="craftFood"> Еда и зелья</label>
+      <button id="craftBtn" class="btn">Посчитать крафт</button>
+      <button id="craftStopBtn" class="btn sec2" disabled>Стоп</button>
+      <span id="craftStatus" class="status-inline">Выбери город крафта и нажми «Посчитать крафт».</span>
+    </div>
+    <div class="hint">Ресурсы покупаются по цене продавца в выбранном городе (или там, где дешевле — город виден в подсказке к рецепту), готовое продаётся там, где отмечено в «Маршруте». Тир, зачарование, поиск и фильтры прибыли берутся слева. Не учтено: плата за станок, расход фокуса и шанс на повышенное качество.</div>
+    <div class="tablewrap">
+      <table><thead><tr><th>Предмет</th><th>Тир</th><th>Рецепт</th><th class="n">Себестоимость</th><th>Продать</th><th class="n">Цена</th><th class="n">Прибыль</th><th class="n">%</th><th class="n">Данные</th></tr></thead><tbody id="craftBody"></tbody></table>
+      <div id="craftEmpty" class="empty">Выбери город крафта и нажми «Посчитать крафт».</div>
+    </div>
+  </div>
+
+  <div class="view" id="cartView" hidden>
+    <div class="cartbar">
+      <div class="cards" id="cartSum"></div>
+      <div class="cartbtns">
+        <button id="copyCart" class="btn">Скопировать список</button>
+        <button id="clearCart" class="btn sec2">Очистить корзину</button>
+      </div>
+    </div>
+    <div class="tablewrap">
+      <table><thead><tr><th></th><th>Предмет</th><th>Тир</th><th>Купить</th><th class="n">Цена</th><th>Продать</th><th class="n">Цена</th><th class="n">Кол-во</th><th class="n">Затраты</th><th class="n">Вес, кг</th><th class="n">Прибыль</th></tr></thead><tbody id="cartBody"></tbody></table>
+      <div id="cartEmpty" class="empty">Корзина пуста. Нажми «＋» в строке сделки, чтобы добавить предмет.</div>
+    </div>
+  </div>
+</main>
+</div>
+
+<dialog id="supportDlg">
+  <h2>Поддержать проект</h2>
+  <p>Albion Flip — бесплатный инструмент от <b>Memory Shards</b>. Если он помог заработать серебро, поддержи автора: это мотивирует добавлять новые функции.</p>
+  <div class="row">
+    <a class="btn" id="donateLink" target="_blank" rel="noopener" hidden>Отправить донат</a>
+    <a class="btn ghost" id="ytLink" target="_blank" rel="noopener">Подписаться на YouTube</a>
+    <button type="button" class="btn sec2" id="supportClose">Закрыть</button>
+  </div>
+</dialog>
+
+<!-- ВСПЛЫВАЮЩЕЕ ПРЕДУПРЕЖДЕНИЕ О НОВОМ ГАНГЕ -->
+<div id="gankToast" class="gank-toast" hidden></div>
+
+<script src="items.js" charset="utf-8"></script>
+<script src="recipes.js" charset="utf-8"></script>
+<script src="map.js" charset="utf-8"></script>
+<script src="app.js" charset="utf-8"></script>
+</body>
+</html>
